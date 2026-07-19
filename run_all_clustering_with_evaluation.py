@@ -5,7 +5,6 @@ Created on Mon Jun 15 14:34:23 2026
 @author: User
 """
 
-# run_all_clustering_with_evaluation_FIXED_F1_ENTROPY.py
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -15,7 +14,7 @@ import numpy as np
 import pandas as pd
 
 from sklearn.cluster import KMeans, AgglomerativeClustering, SpectralCoclustering
-from sklearn.preprocessing import normalize, LabelEncoder
+from sklearn.preprocessing import normalize, LabelEncoder, MinMaxScaler
 from sklearn.metrics import (
     f1_score,
     normalized_mutual_info_score,
@@ -223,6 +222,10 @@ for embedding_file in embedding_files:
     X = df[embedding_columns].values.astype(np.float32)
     X_normalized = normalize(X, norm="l2")
 
+    # Spectral Co-Clustering requires a non-negative input matrix.
+    # Feature-wise Min-Max scaling maps every embedding dimension to [0, 1].
+    X_spectral = MinMaxScaler(feature_range=(0, 1)).fit_transform(X)
+
     y_true = LabelEncoder().fit_transform(df["label"].astype(str))
     n_clusters = len(np.unique(y_true))
 
@@ -285,7 +288,8 @@ for embedding_file in embedding_files:
             random_state=seed
         )
 
-        model.fit(X_normalized)
+        # Use the non-negative representation required by Spectral Co-Clustering.
+        model.fit(X_spectral)
         y_pred = np.asarray(model.row_labels_)
 
         metrics = evaluate_clustering(y_true, y_pred)
